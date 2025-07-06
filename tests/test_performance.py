@@ -116,8 +116,11 @@ class TestPerformance:
     @pytest.mark.slow
     def test_memory_usage_with_multiple_symbols(self, sample_ohlcv_data):
         """Test memory usage with multiple symbols"""
-        import psutil
-        import os
+        try:
+            import psutil
+            import os
+        except ImportError:
+            pytest.skip("psutil not available - skipping memory test")
         
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
@@ -237,10 +240,11 @@ class TestPerformance:
     @pytest.mark.slow
     def test_data_processing_performance(self, sample_ohlcv_data):
         """Test performance of data processing operations"""
+        import pandas as pd
+        
         # Create larger dataset for meaningful timing
-        large_sample = sample_ohlcv_data
-        for _ in range(100):  # Replicate data 100 times
-            large_sample = large_sample.append(sample_ohlcv_data, ignore_index=False)
+        large_sample_list = [sample_ohlcv_data] * 100  # Replicate data 100 times
+        large_sample = pd.concat(large_sample_list, ignore_index=False)
         
         market_data = MarketData(
             symbol="AAPL",
@@ -385,8 +389,12 @@ class TestScalability:
     @pytest.mark.slow
     def test_memory_efficiency(self, sample_ohlcv_data):
         """Test memory efficiency with large operations"""
-        import psutil
-        import os
+        try:
+            import psutil
+            import os
+        except ImportError:
+            pytest.skip("psutil not available - skipping memory test")
+        
         import gc
         
         process = psutil.Process(os.getpid())

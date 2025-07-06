@@ -576,7 +576,7 @@ class TestErrorRecoveryScenarios:
         df = df[df['volume'] > 0]
         
         # Fill missing values with forward fill
-        df = df.fillna(method='ffill')
+        df = df.ffill()
         
         # Verify cleaning worked
         assert len(df) < original_length  # Some rows should be removed

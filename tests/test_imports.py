@@ -45,6 +45,8 @@ class TestPackageStructure:
             'MarketData',
             'YahooFinanceProvider',
             'FileDataProvider',
+            'generate_filename',
+            'parse_filename',
         ]
         
         assert set(__all__) == set(expected_exports)
