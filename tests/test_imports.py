@@ -22,7 +22,8 @@ class TestPackageStructure:
             DataFrequency,
             MarketDataRequest,
             MarketData,
-            YahooFinanceProvider
+            YahooFinanceProvider,
+            FileDataProvider
         )
         
         # Verify all classes are available
@@ -31,6 +32,7 @@ class TestPackageStructure:
         assert MarketDataRequest is not None
         assert MarketData is not None
         assert YahooFinanceProvider is not None
+        assert FileDataProvider is not None
     
     def test_data_module_all_attribute(self):
         """Test that __all__ attribute is correctly defined"""
@@ -41,7 +43,8 @@ class TestPackageStructure:
             'DataFrequency',
             'MarketDataRequest',
             'MarketData',
-            'YahooFinanceProvider'
+            'YahooFinanceProvider',
+            'FileDataProvider',
         ]
         
         assert set(__all__) == set(expected_exports)

@@ -2,6 +2,8 @@
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
+from pathlib import Path
+import pandas as pd
 
 from backtest_lab.data.base import MarketDataRequest, MarketData, DataFrequency, DataProvider
 from backtest_lab.data.loaders.stock_loader import StockDataLoader
@@ -530,3 +532,147 @@ class TestStockDataLoaderErrorHandling:
         results = loader.get_multiple_symbols([None])
         
         assert len(results) == 0
+
+
+# Add tests for FileDataProvider integration
+class TestStockDataLoaderFileProvider:
+    """Test StockDataLoader with FileDataProvider integration"""
+    
+    def test_loader_initialization_with_data_directory(self):
+        """Test loader initialization with data directory"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            loader = StockDataLoader(data_directory=temp_dir)
+            assert 'file' in loader.providers
+            assert loader.providers['file'].data_directory == Path(temp_dir)
+    
+    def test_add_file_provider(self):
+        """Test adding file provider to existing loader"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            loader = StockDataLoader()
+            assert 'file' not in loader.providers
+            
+            loader.add_file_provider(temp_dir)
+            assert 'file' in loader.providers
+            assert loader.providers['file'].data_directory == Path(temp_dir)
+    
+    def test_save_and_load_data(self):
+        """Test saving and loading data through StockDataLoader"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create sample market data
+            sample_data = pd.DataFrame({
+                'open': [100.0, 101.0],
+                'high': [102.0, 103.0],
+                'low': [99.0, 100.0],
+                'close': [101.0, 102.0],
+                'volume': [1000000, 1100000]
+            }, index=pd.date_range('2024-01-01', periods=2))
+            
+            market_data = MarketData(symbol="AAPL", data=sample_data)
+            
+            # Save data
+            loader = StockDataLoader()
+            parquet_file = temp_path / "aapl.parquet"
+            loader.save_data(market_data, parquet_file, format='parquet')
+            
+            # Load data back
+            loaded_data = loader.load_from_file(parquet_file)
+            
+            assert loaded_data.symbol == "AAPL"
+            assert len(loaded_data.data) == 2
+            assert loaded_data.data.equals(sample_data)
+    
+    def test_load_from_file_provider(self):
+        """Test loading data through file provider"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create sample data file
+            sample_data = pd.DataFrame({
+                'open': [100.0, 101.0],
+                'high': [102.0, 103.0],
+                'low': [99.0, 100.0],
+                'close': [101.0, 102.0],
+                'volume': [1000000, 1100000]
+            }, index=pd.date_range('2024-01-01', periods=2))
+            
+            parquet_file = temp_path / "aapl.parquet"
+            sample_data.to_parquet(parquet_file)
+            
+            # Load through file provider
+            loader = StockDataLoader(data_directory=temp_dir)
+            market_data = loader.get_data(symbol="AAPL", provider="file")
+            
+            assert market_data.symbol == "AAPL"
+            assert len(market_data.data) == 2
+            assert market_data.metadata['provider'] == "File Data Provider"
+    
+    def test_save_data_different_formats(self):
+        """Test saving data in different formats"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create sample market data
+            sample_data = pd.DataFrame({
+                'open': [100.0, 101.0],
+                'high': [102.0, 103.0],
+                'low': [99.0, 100.0],
+                'close': [101.0, 102.0],
+                'volume': [1000000, 1100000]
+            }, index=pd.date_range('2024-01-01', periods=2))
+            
+            market_data = MarketData(symbol="AAPL", data=sample_data)
+            loader = StockDataLoader()
+            
+            # Save as Parquet
+            parquet_file = temp_path / "aapl.parquet"
+            loader.save_data(market_data, parquet_file, format='parquet')
+            assert parquet_file.exists()
+            
+            # Save as CSV
+            csv_file = temp_path / "aapl.csv"
+            loader.save_data(market_data, csv_file, format='csv')
+            assert csv_file.exists()
+            
+            # Test unsupported format
+            with pytest.raises(ValueError, match="Unsupported format"):
+                loader.save_data(market_data, temp_path / "aapl.txt", format='txt')
+    
+    def test_load_from_file_different_formats(self):
+        """Test loading from different file formats"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create sample data
+            sample_data = pd.DataFrame({
+                'open': [100.0, 101.0],
+                'high': [102.0, 103.0],
+                'low': [99.0, 100.0],
+                'close': [101.0, 102.0],
+                'volume': [1000000, 1100000]
+            }, index=pd.date_range('2024-01-01', periods=2))
+            
+            loader = StockDataLoader()
+            
+            # Test Parquet
+            parquet_file = temp_path / "aapl.parquet"
+            sample_data.to_parquet(parquet_file)
+            parquet_data = loader.load_from_file(parquet_file)
+            assert parquet_data.symbol == "AAPL"
+            
+            # Test CSV
+            csv_file = temp_path / "googl.csv"
+            sample_data.to_csv(csv_file)
+            csv_data = loader.load_from_file(csv_file)
+            assert csv_data.symbol == "GOOGL"
+            
+            # Test unsupported format
+            with pytest.raises(ValueError, match="Unsupported file format"):
+                loader.load_from_file(temp_path / "test.txt")
